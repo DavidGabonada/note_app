@@ -1,19 +1,29 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import Home from './componets/Home';
-import Login from './componets/Login';
-import Signup from './componets/Signup';
+import Home from './components/Home';
+import Login from './components/Login';
+import Signup from './components/Signup';
 
 const MainPage = () => {
   const [userId, setUserId] = useState(null);
-  const [view, setView] = useState('login'); // 'login', 'signup', or 'home'
+  const [view, setView] = useState('loading'); // 'loading', 'login', 'signup', or 'home'
 
   useEffect(() => {
-    // You can fetch user information from your server here if needed
+    const storedUserId = localStorage.getItem('userId');
+
+    setTimeout(() => {
+      if (storedUserId) {
+        setUserId(storedUserId);
+        setView('home'); // Automatically navigate to home if user is logged in
+      } else {
+        setView('login'); // Show login form if not logged in
+      }
+    }, 1000); // Simulated delay of 1 second
   }, []);
 
   const handleLogin = (id) => {
     setUserId(id);
+    localStorage.setItem('userId', id); // Save userId to localStorage
     setView('home'); // Change view to home after successful login
   };
 
@@ -27,14 +37,17 @@ const MainPage = () => {
 
   const handleLogout = () => {
     setUserId(null);
+    localStorage.removeItem('userId'); // Remove userId from localStorage
     setView('login'); // Reset view to login after logout
   };
 
-  if (view === 'home') {
-    return <Home userId={userId} onLogout={handleLogout} />;
+  if (view === 'loading') {
+    return null; // Just a blank screen during the simulated delay
   }
 
-  return view === 'signup' ? (
+  return view === 'home' ? (
+    <Home userId={userId} onLogout={handleLogout} />
+  ) : view === 'signup' ? (
     <Signup onSignupSuccess={handleSignupSuccess} />
   ) : (
     <Login onLogin={handleLogin} onSignup={handleSignup} />
