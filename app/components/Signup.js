@@ -22,10 +22,21 @@ const Signup = ({ onSignupSuccess, onClose }) => {
   };
 
   const handleNextStep = () => {
-    if (step < 3) {
-      setStep(step + 1);
+    if (step === 1 && (!formData.firstName || !formData.lastName)) {
+      setError('First Name and Last Name are required.');
+    } else if (step === 2 && (!formData.username || !formData.password || !formData.confirmPassword)) {
+      setError('Username, Password, and Confirm Password are required.');
+    } else if (step === 3 && !formData.email) {
+      setError('Email is required.');
+    } else if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.');
     } else {
-      handleSignup();
+      setError('');
+      if (step < 3) {
+        setStep(step + 1);
+      } else {
+        handleSignup();
+      }
     }
   };
 
@@ -36,11 +47,6 @@ const Signup = ({ onSignupSuccess, onClose }) => {
   };
 
   const handleSignup = async () => {
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-
     try {
       const response = await fetch('http://localhost/hugot/signup.php', {
         method: 'POST',
@@ -63,7 +69,7 @@ const Signup = ({ onSignupSuccess, onClose }) => {
 
   const handleClose = () => {
     if (onClose) {
-      onClose(); // Call the onClose prop function
+      onClose();
     }
   };
 
@@ -79,6 +85,7 @@ const Signup = ({ onSignupSuccess, onClose }) => {
               placeholder="First Name"
               value={formData.firstName}
               onChange={handleChange}
+              required
             />
             <input
               type="text"
@@ -95,6 +102,7 @@ const Signup = ({ onSignupSuccess, onClose }) => {
               placeholder="Last Name"
               value={formData.lastName}
               onChange={handleChange}
+              required
             />
           </>
         );
@@ -108,6 +116,7 @@ const Signup = ({ onSignupSuccess, onClose }) => {
               placeholder="Username"
               value={formData.username}
               onChange={handleChange}
+              required
             />
             <input
               type="password"
@@ -116,6 +125,7 @@ const Signup = ({ onSignupSuccess, onClose }) => {
               placeholder="Password"
               value={formData.password}
               onChange={handleChange}
+              required
             />
             <input
               type="password"
@@ -124,6 +134,7 @@ const Signup = ({ onSignupSuccess, onClose }) => {
               placeholder="Confirm Password"
               value={formData.confirmPassword}
               onChange={handleChange}
+              required
             />
           </>
         );
@@ -137,6 +148,7 @@ const Signup = ({ onSignupSuccess, onClose }) => {
               placeholder="Email"
               value={formData.email}
               onChange={handleChange}
+              required
             />
             <input
               type="tel"
@@ -164,8 +176,8 @@ const Signup = ({ onSignupSuccess, onClose }) => {
   const progressBarWidth = `${(step / 3) * 100}%`;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50">
-      <div className="bg-white p-6 rounded-lg max-w-md w-full relative">
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      <div className="bg-white p-6 rounded-lg max-w-md w-full relative shadow-lg">
         <button
           onClick={handleClose}
           className="absolute top-2 right-2 p-2 text-gray-500 hover:text-gray-700 z-10"
@@ -183,29 +195,27 @@ const Signup = ({ onSignupSuccess, onClose }) => {
           <div className="h-2 w-full bg-gray-200 rounded-full">
             <div
               className="h-full bg-blue-500 rounded-full"
-              style={{ width: progressBarWidth, transition: 'width 0.5s ease-in-out' }}
+              style={{ width: progressBarWidth }}
             />
           </div>
         </div>
 
-        <div className="animated fadeIn">
-          {renderStep()}
-        </div>
+        {renderStep()}
 
-        <div className="flex justify-between mt-4">
+        <div className="flex justify-between mt-6">
           {step > 1 && (
             <button
               onClick={handlePreviousStep}
-              className="w-1/3 bg-gray-500 text-white p-2 rounded"
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
             >
-              Back
+              Previous
             </button>
           )}
           <button
             onClick={handleNextStep}
-            className={`w-${step === 1 ? 'full' : '2/3'} bg-blue-500 text-white p-2 rounded`}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
           >
-            {step < 3 ? 'Next' : 'Sign Up'}
+            {step === 3 ? 'Sign Up' : 'Next'}
           </button>
         </div>
       </div>

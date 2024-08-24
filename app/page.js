@@ -6,7 +6,7 @@ import Signup from './components/Signup';
 
 const MainPage = () => {
   const [userId, setUserId] = useState(null);
-  const [view, setView] = useState('loading'); // 'loading', 'login', 'signup', or 'home'
+  const [view, setView] = useState('loading'); 
 
   useEffect(() => {
     const storedUserId = localStorage.getItem('userId');
@@ -14,17 +14,17 @@ const MainPage = () => {
     setTimeout(() => {
       if (storedUserId) {
         setUserId(storedUserId);
-        setView('home'); // Automatically navigate to home if user is logged in
+        setView('home'); 
       } else {
-        setView('login'); // Show login form if not logged in
+        setView('login'); 
       }
-    }, 1000); // Simulated delay of 1 second
+    }, 1000); 
   }, []);
 
   const handleLogin = (id) => {
     setUserId(id);
-    localStorage.setItem('userId', id); // Save userId to localStorage
-    setView('home'); // Change view to home after successful login
+    localStorage.setItem('userId', id);
+    setView('home');
   };
 
   const handleSignup = () => {
@@ -37,12 +37,12 @@ const MainPage = () => {
 
   const handleLogout = () => {
     setUserId(null);
-    localStorage.removeItem('userId'); // Remove userId from localStorage
-    setView('login'); // Reset view to login after logout
+    localStorage.removeItem('userId');
+    setView('login');
   };
 
   if (view === 'loading') {
-    return null; // Just a blank screen during the simulated delay
+    return null;
   }
 
   return view === 'home' ? (

@@ -1,12 +1,17 @@
+"use client";
 import React, { useState, useEffect } from 'react';
 import { FaHeart, FaComment, FaSmile } from 'react-icons/fa';
 import Post from './Post';
+import { formatDistanceToNow } from 'date-fns';
+import { TextSelect } from 'lucide-react';
+import { Form } from 'react-bootstrap';
 
 const Home = ({ userId: initialUserId, onLogout }) => {
   const [userId, setUserId] = useState(initialUserId || localStorage.getItem('userId'));
   const [posts, setPosts] = useState([]);
   const [postText, setPostText] = useState('');
   const [showFeelingOptions, setShowFeelingOptions] = useState(false);
+  const [category_Id, setCategory_Id] = useState("");
 
   useEffect(() => {
     if (userId) {
@@ -15,8 +20,12 @@ const Home = ({ userId: initialUserId, onLogout }) => {
     }
   }, [userId]);
 
+  useEffect(() => {
+    console.log("category_Id",category_Id)
+  },[category_Id])
+
   const fetchPosts = () => {
-    fetch('http://localhost/hugot/api.php')
+    fetch('http://localhost/hugot/api.php?action=getPosts')
       .then((response) => response.json())
       .then((data) => setPosts(data.posts))
       .catch((error) => console.error('Error fetching posts:', error));
@@ -31,6 +40,7 @@ const Home = ({ userId: initialUserId, onLogout }) => {
           action: 'addPost',
           user_id: userId,
           content: postText,
+          category_Id: category_Id,
         }),
       });
 
@@ -40,10 +50,10 @@ const Home = ({ userId: initialUserId, onLogout }) => {
           {
             post_id: result.post_id,
             user_id: result.user_id,
-            first_name: result.first_name,
-            last_name: result.last_name,
-            content: postText,
-            created_at: new Date().toISOString(),
+            post_first_name: result.first_name,
+            post_last_name: result.last_name,
+            post_content: postText,
+            post_created_at: new Date().toISOString(),
             comments: [],
             likes: 0
           },
@@ -82,7 +92,7 @@ const Home = ({ userId: initialUserId, onLogout }) => {
                       {
                         comment_id: data.comment_id,
                         comment_text: commentText,
-                        created_at: new Date().toISOString(),
+                        comment_created_at: new Date().toISOString(),
                         comment_first_name: data.comment_first_name,
                         comment_last_name: data.comment_last_name,
                       },
@@ -137,9 +147,10 @@ const Home = ({ userId: initialUserId, onLogout }) => {
 
   return (
     <div className="relative">
-      <header className="w-full fixed top-0 left-0 flex justify-between items-center p-4 border-b border-gray-300 bg-gray-100 shadow-lg z-50">
-        <div className="text-2xl font-bold text-blue-800 tracking-widest">
-          Hugot App
+      <header className="w-full fixed top-0 left-0 flex justify-between items-center p-4 border-b border-gray-300 bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg z-50">
+        <div className="text-2xl font-bold text-white tracking-widest">
+          <span className="bg-white text-blue-500 px-2 py-1 rounded-lg">Hugot</span>
+          <span className="ml-2">Realization</span>
         </div>
         <button 
           onClick={handleLogout} 
@@ -148,63 +159,47 @@ const Home = ({ userId: initialUserId, onLogout }) => {
           Logout
         </button>
       </header>
-
-      <div className="pt-28 max-w-2xl mx-auto mt-10">
-        <div className="mb-6 p-4 bg-gray-100 shadow-md rounded-lg border border-gray-300">
+      <div className="mt-20 p-6 max-w-3xl mx-auto space-y-6">
+        <div className="p-6 bg-white shadow rounded-lg border border-gray-300">
           <textarea
-            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
-            rows="3"
-            placeholder="What's on your mind?"
             value={postText}
             onChange={(e) => setPostText(e.target.value)}
+            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+            placeholder="What's on your mind?"
           />
-          <div className="flex items-center mb-4">
-            <FaSmile
-              className="text-amber-500 text-2xl cursor-pointer hover:text-amber-600 transition"
+          <div className="flex justify-between items-center mt-4">
+            <button
               onClick={() => setShowFeelingOptions(!showFeelingOptions)}
-            />
-            <span
-              className="ml-2 text-gray-600 cursor-pointer hover:text-gray-800 transition"
-              onClick={() => setShowFeelingOptions(!showFeelingOptions)}
+              className="text-gray-500 hover:text-gray-800 transition flex items-center"
             >
-              Feeling/activity
-            </span>
+              <FaSmile className="mr-2" />
+              <span>Feeling/activity</span>
+              <Form.Select onChange = {(e => setCategory_Id(e.target.value))}>
+                <option>Select Category</option>
+                <option value="1">Love</option>
+                <option value="2">Work</option>
+                <option value="3">Life</option>
+              </Form.Select>
+            </button>
+            <button
+              onClick={addPost}
+              className="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700 transition"
+            >
+              Post
+            </button>
           </div>
-
-          {showFeelingOptions && (
-            <div className="mb-4 p-4 border border-gray-300 rounded-lg bg-gray-200">
-              <div className="grid grid-cols-2 gap-2">
-                {['happy', 'loved', 'excited', 'blessed', 'sad', 'thankful'].map((feeling) => (
-                  <div
-                    key={feeling}
-                    className="flex items-center cursor-pointer hover:bg-gray-300 p-2 rounded transition"
-                    onClick={() => setPostText(`${postText} Feeling ${feeling}`)}
-                  >
-                    <img
-                      src={`https://via.placeholder.com/20?text=${feeling.charAt(0).toUpperCase()}`}
-                      alt={feeling}
-                      className="mr-2"
-                    />
-                    <span>{feeling}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={addPost}
-            className="mt-3 bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-900 transition w-full"
-          >
-            Post
-          </button>
         </div>
 
-        <div className="space-y-4">
-          {posts.map((post) => (
-            <Post key={post.post_id} post={post} addComment={addComment} likePost={likePost} user_id={userId} />
-          ))}
-        </div>
+        {posts.map((post) => (
+          <Post
+            key={post.post_id}
+            post={post}
+            addComment={addComment}
+            likePost={likePost}
+            user_id={userId}
+            formatDistanceToNow={formatDistanceToNow}
+          />
+        ))}
       </div>
     </div>
   );

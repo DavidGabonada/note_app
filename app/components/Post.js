@@ -1,16 +1,17 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { FaHeart, FaComment } from 'react-icons/fa';
+import { FaHeart, FaComment, FaArrowRight } from 'react-icons/fa';
+import { formatDistanceToNow, format } from 'date-fns';
 
 const Post = ({ post, addComment, likePost, user_id }) => {
   const {
     post_id,
-    first_name,
-    last_name,
-    content,
-    comments = [], // Ensure comments is always an array
-    likes = 0,     // Ensure likes is a number
-    created_at,
+    post_first_name,
+    post_last_name,
+    post_content,
+    comments = [],
+    likes = 0,
+    post_created_at,
   } = post;
 
   const [commentText, setCommentText] = useState('');
@@ -20,10 +21,11 @@ const Post = ({ post, addComment, likePost, user_id }) => {
   const [liked, setLiked] = useState(false);
 
   useEffect(() => {
-    // Fetch initial like status for this user
-    const fetchLikeStatus = async () => {
+    const checkLikeStatus = async () => {
       try {
-        const response = await fetch(`your_api_endpoint_to_get_like_status?post_id=${post_id}&user_id=${user_id}`);
+        const response = await fetch(
+          `http://localhost/hugot/api.php?action=getLikeStatus&post_id=${post_id}&user_id=${user_id}`
+        );
         const data = await response.json();
         if (data.success) {
           setLiked(data.liked);
@@ -33,98 +35,117 @@ const Post = ({ post, addComment, likePost, user_id }) => {
       }
     };
 
-    fetchLikeStatus();
+    checkLikeStatus();
   }, [post_id, user_id]);
 
-  const handleAddComment = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (commentText.trim()) {
-        addComment(post_id, commentText);
-        setCommentText('');
-        setShowCommentInput(false);
-      }
-    }
-  };
-
-  const handleLikePost = async () => {
+  const handleLike = async () => {
     try {
-      const response = await likePost(post_id, user_id);
+      const response = await likePost(post_id);
       if (response.success) {
         setLiked(!liked);
-        setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+        setLikeCount(likeCount + (liked ? -1 : 1));
       }
     } catch (error) {
-      console.error('Error liking the post:', error);
+      console.error('Error liking post:', error);
     }
   };
 
-  const handleShowMoreComments = () => {
-    setShowMoreComments(!showMoreComments);
+  const handleAddComment = () => {
+    if (commentText.trim()) {
+      addComment(post_id, commentText);
+      setCommentText('');
+      setShowCommentInput(false);
+    }
   };
 
-  const displayedComments = showMoreComments ? comments : comments.slice(0, 3);
-  const isScrollable = comments.length > 3;
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleAddComment();
+    }
+  };
+
+  const formattedDate = formatDistanceToNow(new Date(post_created_at), { addSuffix: true });
+  const fullDate = format(new Date(post_created_at), "EEEE, MMMM d, yyyy 'at' h:mm a");
 
   return (
-    <div className="mb-8 p-6 bg-white shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-300">
-      <div className="flex items-center mb-4">
-        <div className="font-bold text-2xl text-gray-800">{`${first_name} ${last_name}`}</div>
+    <div className="p-4 bg-white shadow rounded-lg border border-gray-300">
+      <div className="flex justify-between items-center mb-2">
+        <div className="text-sm text-gray-700">
+          <span className="font-bold">{post_first_name} {post_last_name}</span>
+          <span
+            className="ml-2 relative"
+            title={fullDate} // Tooltip will show full date and time
+          >
+            {formattedDate}
+          </span>
+        </div>
       </div>
-      <div className="text-gray-700 mb-4 text-lg">
-        {content}
-      </div>
-      <div className="text-gray-500 text-sm mb-6">{new Date(created_at).toLocaleDateString()}</div>
-      
-      <div className="flex items-center mb-4 space-x-6">
-        <button 
-          className={`flex items-center space-x-2 text-gray-700 hover:text-red-500 transition-colors duration-300 ${liked ? 'text-red-500' : ''}`}
-          onClick={handleLikePost}
-        >
-          <FaHeart className="text-2xl" />
-          <span className="font-medium">{likeCount}</span>
-        </button>
-        <button 
-          className="flex items-center space-x-2 text-gray-700 hover:text-blue-500 transition-colors duration-300"
-          onClick={() => setShowCommentInput(!showCommentInput)}
-        >
-          <FaComment className="text-2xl" />
-          <span className="font-medium">Comment</span>
-        </button>
+      <p className="text-gray-800 mb-4">{post_content}</p>
+      <div className="flex justify-between items-center">
+        <div className="flex space-x-4">
+          <button
+            onClick={handleLike}
+            className={`flex items-center space-x-2 ${liked ? 'text-red-500' : 'text-gray-500'}`}
+          >
+            <FaHeart /> <span>{likeCount}</span>
+          </button>
+          <button
+            onClick={() => setShowCommentInput(!showCommentInput)}
+            className="flex items-center space-x-2 text-gray-500"
+          >
+            <FaComment /> <span>{comments.length}</span>
+          </button>
+        </div>
       </div>
 
       {showCommentInput && (
-        <div className="mb-4">
-          <textarea
-            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows="2"
-            placeholder="Add a comment..."
+        <div className="mt-4 relative">
+          <input
+            type="text"
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            onKeyDown={handleAddComment}
+            onKeyPress={handleKeyPress}
+            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 pr-10"
+            placeholder="Write a comment..."
           />
+          <button
+            onClick={handleAddComment}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-amber-500 hover:text-amber-600"
+          >
+            <FaArrowRight />
+          </button>
         </div>
       )}
 
-      <div className={`space-y-4 ${isScrollable ? 'max-h-48 overflow-y-auto scrollbar-hide' : ''}`}>
-        {displayedComments.map((comment) => (
-          <div key={comment.comment_id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="font-semibold text-blue-600 mb-2">
-              {comment.comment_first_name} {comment.comment_last_name}
+      {comments.length > 0 && (
+        <div className="mt-4">
+          {showMoreComments ? (
+            <div className="max-h-40 overflow-y-auto">
+              {comments.map((comment) => (
+                <div key={comment.comment_id} className="mt-2 text-sm text-gray-700">
+                  <span className="font-bold">{comment.comment_first_name} {comment.comment_last_name}</span> • {new Date(comment.comment_created_at).toLocaleString()}
+                  <p>{comment.comment_text}</p>
+                </div>
+              ))}
             </div>
-            <div className="text-gray-700">{comment.comment_text}</div>
-            <div className="text-gray-400 text-xs mt-1">{new Date(comment.created_at).toLocaleDateString()}</div>
-          </div>
-        ))}
-        {comments.length > 3 && (
-          <button
-            onClick={handleShowMoreComments}
-            className="text-blue-600 hover:text-blue-700 transition-colors duration-300 font-medium"
-          >
-            {showMoreComments ? 'Show less' : 'View more comments'}
-          </button>
-        )}
-      </div>
+          ) : (
+            comments.slice(0, 3).map((comment) => (
+              <div key={comment.comment_id} className="mt-2 text-sm text-gray-700">
+                <span className="font-bold">{comment.comment_first_name} {comment.comment_last_name}</span> • {new Date(comment.comment_created_at).toLocaleString()}
+                <p>{comment.comment_text}</p>
+              </div>
+            ))
+          )}
+          {comments.length > 3 && (
+            <button
+              onClick={() => setShowMoreComments(!showMoreComments)}
+              className="text-amber-500 mt-2"
+            >
+              {showMoreComments ? 'Show less' : 'Show more'}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
