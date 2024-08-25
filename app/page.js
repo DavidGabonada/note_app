@@ -48,7 +48,7 @@ const MainPage = () => {
   return view === 'home' ? (
     <Home userId={userId} onLogout={handleLogout} />
   ) : view === 'signup' ? (
-    <Signup onSignupSuccess={handleSignupSuccess} />
+    <Signup onSignupSuccess={handleSignupSuccess} onClose={() => setView('login')} />
   ) : (
     <Login onLogin={handleLogin} onSignup={handleSignup} />
   );

@@ -1,151 +1,180 @@
-"use client";
+import axios from 'axios';
 import React, { useState, useEffect } from 'react';
-import { FaHeart, FaComment, FaArrowRight } from 'react-icons/fa';
-import { formatDistanceToNow, format } from 'date-fns';
+import { FaHeart, FaComment } from 'react-icons/fa';
+import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
 
-const Post = ({ post, addComment, likePost, user_id }) => {
-  const {
-    post_id,
-    post_first_name,
-    post_last_name,
-    post_content,
-    comments = [],
-    likes = 0,
-    post_created_at,
-  } = post;
+const Post = ({ post, addComment, user_id }) => {
+  const { post_id, first_name, last_name, content, created_at } = post;
 
   const [commentText, setCommentText] = useState('');
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [showMoreComments, setShowMoreComments] = useState(false);
-  const [likeCount, setLikeCount] = useState(likes);
+  const [likeCount, setLikeCount] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [allComments, setAllComments] = useState([]);
+  const [showDate, setShowDate] = useState(false);
 
   useEffect(() => {
-    const checkLikeStatus = async () => {
+    const fetchLikesAndComments = async () => {
       try {
-        const response = await fetch(
-          `http://localhost/hugot/api.php?action=getLikeStatus&post_id=${post_id}&user_id=${user_id}`
-        );
-        const data = await response.json();
-        if (data.success) {
-          setLiked(data.liked);
+        // Fetch like status and count
+        const likeRes = await axios.post('http://localhost/hugot/get_likes.php', {
+          postId: post_id,
+          userId: user_id,
+        });
+
+        if (likeRes.data.success) {
+          setLikeCount(likeRes.data.likeCount);
+          setLiked(likeRes.data.liked);
+        } else {
+          console.error('Failed to fetch likes:', likeRes.data.message);
         }
+
+        // Fetch comments
+        getComment();
       } catch (error) {
-        console.error('Error fetching like status:', error);
+        toast.error("Network Error: " + error.message);
+        console.error('Error fetching data:', error);
       }
     };
 
-    checkLikeStatus();
+    fetchLikesAndComments();
   }, [post_id, user_id]);
 
-  const handleLike = async () => {
+  const getComment = async () => {
     try {
-      const response = await likePost(post_id);
-      if (response.success) {
+      const formData = new FormData();
+      formData.append("postId", post_id);
+      const res = await axios.post("http://localhost/hugot/get_comment.php", formData);
+      setAllComments(res.data === 0 ? [] : res.data);
+    } catch (error) {
+      toast.error("Network Error: " + error.message);
+      console.error("Error:", error); 
+    }
+  };
+
+  const handleAddComment = async (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (commentText.trim()) {
+        try {
+          await addComment(post_id, commentText);
+          setCommentText('');
+          setShowCommentInput(false);
+          getComment();
+        } catch (error) {
+          toast.error("Failed to add comment: " + error.message);
+        }
+      }
+    }
+  };
+
+  const handleLikePost = async () => {
+    try {
+      const response = await axios.post('http://localhost/hugot/like_post.php', {
+        postId: post_id,
+        userId: user_id,
+      });
+
+      if (response.data.success) {
         setLiked(!liked);
-        setLikeCount(likeCount + (liked ? -1 : 1));
+        setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+      } else {
+        console.error('Failed to like post:', response.data.message);
       }
     } catch (error) {
-      console.error('Error liking post:', error);
+      toast.error("Network Error: " + error.message);
+      console.error('Error liking the post:', error);
     }
   };
 
-  const handleAddComment = () => {
-    if (commentText.trim()) {
-      addComment(post_id, commentText);
-      setCommentText('');
-      setShowCommentInput(false);
-    }
-  };
+  const displayedComments = showMoreComments ? allComments : allComments.slice(0, 3);
+  const isScrollable = allComments.length > 3;
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleAddComment();
-    }
-  };
-
-  const formattedDate = formatDistanceToNow(new Date(post_created_at), { addSuffix: true });
-  const fullDate = format(new Date(post_created_at), "EEEE, MMMM d, yyyy 'at' h:mm a");
+  // Calculate the time difference for "Just now" display
+  const timeAgo = formatDistanceToNow(new Date(created_at), { addSuffix: true });
+  const isJustNow = timeAgo === 'less than a minute ago';
 
   return (
-    <div className="p-4 bg-white shadow rounded-lg border border-gray-300">
-      <div className="flex justify-between items-center mb-2">
-        <div className="text-sm text-gray-700">
-          <span className="font-bold">{post_first_name} {post_last_name}</span>
-          <span
-            className="ml-2 relative"
-            title={fullDate} // Tooltip will show full date and time
-          >
-            {formattedDate}
-          </span>
-        </div>
+    <div className={`mb-8 p-6 rounded-lg shadow-lg transition-transform duration-300 
+                    ${showMoreComments ? 'bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 scale-105' : 'bg-white'}`}>
+      <div className="flex items-center mb-4">
+        <div className="text-2xl font-bold text-gray-800">{`${first_name} ${last_name}`}</div>
       </div>
-      <p className="text-gray-800 mb-4">{post_content}</p>
-      <div className="flex justify-between items-center">
-        <div className="flex space-x-4">
-          <button
-            onClick={handleLike}
-            className={`flex items-center space-x-2 ${liked ? 'text-red-500' : 'text-gray-500'}`}
-          >
-            <FaHeart /> <span>{likeCount}</span>
-          </button>
-          <button
-            onClick={() => setShowCommentInput(!showCommentInput)}
-            className="flex items-center space-x-2 text-gray-500"
-          >
-            <FaComment /> <span>{comments.length}</span>
-          </button>
-        </div>
+      <div className="text-lg text-gray-800 mb-4">{content}</div>
+      
+      <div 
+        className="text-sm text-gray-600 mb-6 relative cursor-pointer"
+        onMouseEnter={() => setShowDate(true)}
+        onMouseLeave={() => setShowDate(false)}
+      >
+        {isJustNow ? 'Just now' : timeAgo}
+        {showDate && !isJustNow && (
+          <div className="absolute top-full left-0 mt-2 p-2 bg-gray-800 text-white text-xs rounded shadow-lg">
+            {new Date(created_at).toLocaleString()}
+          </div>
+        )}
+      </div>
+      
+      <div className="flex items-center mb-4 space-x-6">
+        <button 
+          className={`flex items-center space-x-2 text-gray-600 hover:text-red-500 transition-colors duration-300 
+                      ${liked ? 'text-red-500' : ''}`}
+          onClick={handleLikePost}
+        >
+          <FaHeart className="text-2xl" />
+          <span className="font-medium">{likeCount}</span>
+        </button>
+        <button 
+          className="flex items-center space-x-2 text-gray-600 hover:text-blue-500 transition-colors duration-300"
+          onClick={() => setShowCommentInput(!showCommentInput)}
+        >
+          <FaComment className="text-2xl" />
+          <span className="font-medium">Comment</span>
+        </button>
       </div>
 
       {showCommentInput && (
-        <div className="mt-4 relative">
-          <input
-            type="text"
+        <div className="relative mb-4">
+          <textarea
+            className="w-full p-4 border border-gray-300 rounded-lg bg-gray-100 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows="2"
+            placeholder="Add a comment..."
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 pr-10"
-            placeholder="Write a comment..."
+            onKeyDown={handleAddComment}
           />
-          <button
-            onClick={handleAddComment}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-amber-500 hover:text-amber-600"
-          >
-            <FaArrowRight />
-          </button>
         </div>
       )}
 
-      {comments.length > 0 && (
-        <div className="mt-4">
-          {showMoreComments ? (
-            <div className="max-h-40 overflow-y-auto">
-              {comments.map((comment) => (
-                <div key={comment.comment_id} className="mt-2 text-sm text-gray-700">
-                  <span className="font-bold">{comment.comment_first_name} {comment.comment_last_name}</span> • {new Date(comment.comment_created_at).toLocaleString()}
-                  <p>{comment.comment_text}</p>
-                </div>
-              ))}
+      <div className={`space-y-4 ${isScrollable ? 'max-h-48 overflow-y-scroll transition-all duration-500' : ''}`}>
+        {displayedComments.map((comment, index) => (
+          <div key={index} className="p-4 bg-gray-100 rounded-lg border border-gray-200">
+            <div className="font-semibold text-blue-600 mb-2">
+              {comment.first_name} {comment.last_name}
             </div>
-          ) : (
-            comments.slice(0, 3).map((comment) => (
-              <div key={comment.comment_id} className="mt-2 text-sm text-gray-700">
-                <span className="font-bold">{comment.comment_first_name} {comment.comment_last_name}</span> • {new Date(comment.comment_created_at).toLocaleString()}
-                <p>{comment.comment_text}</p>
-              </div>
-            ))
-          )}
-          {comments.length > 3 && (
-            <button
-              onClick={() => setShowMoreComments(!showMoreComments)}
-              className="text-amber-500 mt-2"
-            >
-              {showMoreComments ? 'Show less' : 'Show more'}
-            </button>
-          )}
-        </div>
-      )}
+            <div className="text-gray-800">{comment.comment_text}</div>
+            <div className="text-gray-500 text-xs mt-1">{new Date(comment.created_at).toLocaleDateString()}</div>
+          </div>
+        ))}
+        {allComments.length > 3 && !showMoreComments && (
+          <button
+            onClick={() => setShowMoreComments(true)}
+            className="text-blue-600 hover:text-blue-700 transition-colors duration-300 font-medium"
+          >
+            View more comments
+          </button>
+        )}
+        {showMoreComments && (
+          <button
+            onClick={() => setShowMoreComments(false)}
+            className="text-blue-600 hover:text-blue-700 transition-colors duration-300 font-medium"
+          >
+            Show less
+          </button>
+        )}
+      </div>
     </div>
   );
 };
