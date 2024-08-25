@@ -1,17 +1,17 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { FaHeart, FaComment, FaSmile, FaBars, FaTimes } from 'react-icons/fa';
+import { FaHeart, FaComment, FaBars, FaTimes } from 'react-icons/fa';
 import Post from './Post';
 import { formatDistanceToNow } from 'date-fns';
 import axios from 'axios';
 
 const Home = ({ userId: initialUserId, onLogout }) => {
   const [userId, setUserId] = useState(initialUserId || localStorage.getItem('userId'));
-  const [userName, setUserName] = useState(localStorage.getItem('userName') || ''); // Retrieve userName
   const [posts, setPosts] = useState([]);
   const [postText, setPostText] = useState('');
-  const [showFeelingOptions, setShowFeelingOptions] = useState(false);
+  const [category, setCategory] = useState(''); // State for category
   const [showMenu, setShowMenu] = useState(false);
+  const [showCategoryOptions, setShowCategoryOptions] = useState(false); // State for showing category options
 
   const getHugot = async () => {
     const url = 'http://localhost/hugot/get_hugot.php';
@@ -30,6 +30,7 @@ const Home = ({ userId: initialUserId, onLogout }) => {
       if (res.data === 1) {
         getHugot();
         setPostText('');
+        setCategory(''); // Reset category after posting
       }
     } catch (error) {
       console.error('An error occurred:', error);
@@ -37,19 +38,86 @@ const Home = ({ userId: initialUserId, onLogout }) => {
   };
 
   const addComment = async (postId, commentText) => {
-    // Comment logic here
+    try {
+      const response = await fetch('http://localhost/hugot/api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'addComment',
+          post_id: postId,
+          user_id: userId,
+          comment_text: commentText,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setPosts(
+          posts.map((post) =>
+            post.post_id === postId
+              ? {
+                  ...post,
+                  comments: [
+                    ...(post.comments ?? []), 
+                    {
+                      comment_id: data.comment_id,
+                      comment_text: commentText,
+                      comment_created_at: new Date().toISOString(),
+                      comment_first_name: data.comment_first_name,
+                      comment_last_name: data.comment_last_name,
+                    },
+                  ],
+                }
+              : post
+          )
+        );
+      } else {
+        console.error('Failed to add comment:', data.message);
+      }
+    } catch (error) {
+      console.error('An error occurred:', error);
+    }
   };
 
   const likePost = async (postId, userId) => {
-    // Like post logic here
+    try {
+      const response = await axios.post('http://localhost/hugot/api.php', {
+        action: 'likePost',
+        post_id: postId,
+        user_id: userId,
+      });
+  
+      const data = response.data;
+      if (data.success) {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post.post_id === postId
+              ? {
+                  ...post,
+                  likes: post.likes + (data.liked ? 1 : -1),
+                  liked: data.liked,
+                }
+              : post
+          )
+        );
+      } else {
+        console.error('Failed to like post:', data.message);
+      }
+    } catch (error) {
+      console.error('An error occurred:', error);
+    }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('userId');
-    localStorage.removeItem('userName'); // Clear userName on logout
     setUserId(null);
-    setUserName(''); // Reset userName state
     onLogout();
+  };
+
+  const handleCategoryClick = (category) => {
+    setCategory(category);
+    setPostText(`${category}: ${postText}`); // Add category with a colon to the text
+    setShowCategoryOptions(false); // Hide category options after selection
   };
 
   useEffect(() => {
@@ -89,16 +157,41 @@ const Home = ({ userId: initialUserId, onLogout }) => {
             value={postText}
             onChange={(e) => setPostText(e.target.value)}
             className="w-full p-4 bg-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 text-gray-800"
-            placeholder={`Share your thoughts, ${userName}...`} // Display userName in placeholder
+            placeholder="Share your thoughts..."
           />
+
           <div className="flex justify-between items-center mt-4">
-            <button
-              onClick={() => setShowFeelingOptions(!showFeelingOptions)}
-              className="text-gray-600 hover:text-blue-500 transition-all duration-300 flex items-center"
-            >
-              <FaSmile className="mr-2 text-xl" />
-              <span className="font-medium">Feeling/activity</span>
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowCategoryOptions(!showCategoryOptions)}
+                className="text-gray-600 hover:text-blue-500 transition-all duration-300 flex items-center"
+              >
+                <FaBars className="mr-2 text-xl" />
+                <span className="font-medium">Category</span>
+              </button>
+              {showCategoryOptions && (
+                <div className="absolute top-full mt-2 bg-white shadow-lg rounded-lg overflow-hidden z-50">
+                  <button
+                    onClick={() => handleCategoryClick('Love')}
+                    className="block px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors duration-300 w-full text-left"
+                  >
+                    Love
+                  </button>
+                  <button
+                    onClick={() => handleCategoryClick('Work')}
+                    className="block px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors duration-300 w-full text-left"
+                  >
+                    Work
+                  </button>
+                  <button
+                    onClick={() => handleCategoryClick('Life')}
+                    className="block px-4 py-2 text-gray-800 hover:bg-gray-100 transition-colors duration-300 w-full text-left"
+                  >
+                    Life
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               onClick={addPost}
               className="bg-blue-500 text-white py-2 px-8 rounded-full hover:bg-blue-600 transition-all duration-300 shadow-lg"

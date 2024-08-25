@@ -18,7 +18,7 @@ const Post = ({ post, addComment, user_id }) => {
   useEffect(() => {
     const fetchLikesAndComments = async () => {
       try {
-        // Fetch like status and count
+        
         const likeRes = await axios.post('http://localhost/hugot/get_likes.php', {
           postId: post_id,
           userId: user_id,
@@ -31,7 +31,7 @@ const Post = ({ post, addComment, user_id }) => {
           console.error('Failed to fetch likes:', likeRes.data.message);
         }
 
-        // Fetch comments
+        
         getComment();
       } catch (error) {
         toast.error("Network Error: " + error.message);
@@ -50,7 +50,7 @@ const Post = ({ post, addComment, user_id }) => {
       setAllComments(res.data === 0 ? [] : res.data);
     } catch (error) {
       toast.error("Network Error: " + error.message);
-      console.error("Error:", error); 
+      console.error("Error fetching comments:", error); 
     }
   };
 
@@ -77,11 +77,15 @@ const Post = ({ post, addComment, user_id }) => {
         userId: user_id,
       });
 
+      console.log('API Response:', response.data);
+
       if (response.data.success) {
         setLiked(!liked);
         setLikeCount(liked ? likeCount - 1 : likeCount + 1);
       } else {
-        console.error('Failed to like post:', response.data.message);
+        const errorMessage = response.data.message || 'Unknown error occurred';
+        console.error('Failed to like post:', errorMessage);
+        toast.error('Failed to like post: ' + errorMessage);
       }
     } catch (error) {
       toast.error("Network Error: " + error.message);
@@ -92,13 +96,12 @@ const Post = ({ post, addComment, user_id }) => {
   const displayedComments = showMoreComments ? allComments : allComments.slice(0, 3);
   const isScrollable = allComments.length > 3;
 
-  // Calculate the time difference for "Just now" display
+  
   const timeAgo = formatDistanceToNow(new Date(created_at), { addSuffix: true });
   const isJustNow = timeAgo === 'less than a minute ago';
 
   return (
-    <div className={`mb-8 p-6 rounded-lg shadow-lg transition-transform duration-300 
-                    ${showMoreComments ? 'bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 scale-105' : 'bg-white'}`}>
+    <div className="mb-8 p-6 rounded-lg shadow-lg bg-white">
       <div className="flex items-center mb-4">
         <div className="text-2xl font-bold text-gray-800">{`${first_name} ${last_name}`}</div>
       </div>
